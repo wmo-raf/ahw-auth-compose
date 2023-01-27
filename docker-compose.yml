@@ -1,0 +1,74 @@
+version: '3.0'
+
+services:
+  ahw_user_db:
+    image: "mongo:4.2"
+    container_name: ahw_user_db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${USER_API_DB_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${USER_API_DB_PASSWORD}
+    volumes:
+      - ${USER_API_DB_VOLUME_PATH}:/data/db
+    restart: ${RESTART_POLICY}
+  ahw_user_api:
+    build: 
+      context: ./ahw-user-api
+    image: africahazardswatch.org/ahw-user-api
+    container_name: ahw_user_api
+    restart: ${RESTART_POLICY}
+    command: bash -c "/wait && yarn start"
+    environment:
+      - WAIT_HOSTS=ahw_user_db:27017
+      - MONGODB_HOST=ahw_user_db
+      - MONGO_URI=mongodb://${USER_API_DB_USER}:${USER_API_DB_PASSWORD}@ahw_user_db:27017
+      - MONGODB_USERNAME=${USER_API_DB_USER}
+      - MONGODB_PASSWORD=${USER_API_DB_PASSWORD}
+      - MONGODB_PORT=27017
+      - KC_REALM_PUBLIC_KEY=${KC_REALM_PUBLIC_KEY}
+      - KC_CLIENT_ID=${KC_CLIENT_ID}
+      - PORT=3005
+      - LOGGER_LEVEL=${LOGGER_LEVEL}
+      - GRAYLOG_HOST=${GRAYLOG_HOST}
+      - GRAYLOG_PORT=${GRAYLOG_PORT}
+      - NODE_ENV=production
+    ports:
+      - 3005:3005
+    depends_on:
+      - ahw_user_db
+  ahw_auth_redis:
+    image: redis:alpine
+    container_name: ahw_auth_redis
+  ahw_auth:
+    image: africahazardswatch.org/ahw-auth
+    container_name: ahw_auth
+    build: 
+      context: ./ahw-authorization
+      args:
+        repo_url: ${KC_AUTH_REPO}
+        repo_branch: ${KC_AUTH_BRANCH}
+    restart: ${RESTART_POLICY}
+    command: bash -c "/wait && yarn start"
+    environment:
+      - WAIT_HOSTS=ahw_auth_redis:6379
+      - REDIS_URL=redis://ahw_auth_redis:6379
+      - KC_REALM=${KC_REALM}
+      - KC_AUTH_URL=${KC_AUTH_URL}
+      - KC_CLIENT_ID=${KC_CLIENT_ID}
+      - KC_CLIENT_SECRET=${KC_CLIENT_SECRET}
+      - KC_USERS_GROUP=${KC_USERS_GROUP}
+      - KC_AUTH_USERNAME=${KC_AUTH_USERNAME}
+      - KC_AUTH_PASSWORD=${KC_AUTH_PASSWORD}
+      - KC_AUTH_CLIENT_ID=${KC_AUTH_CLIENT_ID}
+      - KC_REALM_PUBLIC_KEY=${KC_REALM_PUBLIC_KEY}
+      - KC_EMAIL_SENDING_ENABLED=${KC_EMAIL_SENDING_ENABLED}
+      - LOGGER_LEVEL=${LOGGER_LEVEL}
+      - PORT=9000
+    ports:
+      - 9000:9000
+    depends_on:
+      - ahw_auth_redis
+
+networks:
+    default:
+      name:  ${AHW_DOCKER_NETWORK}
+      external: true

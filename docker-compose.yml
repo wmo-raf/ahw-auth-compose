@@ -32,7 +32,7 @@ services:
       - GRAYLOG_PORT=${GRAYLOG_PORT}
       - NODE_ENV=production
     ports:
-      - 3005:3005
+      - ${USER_API_PORT}:3005
     depends_on:
       - ahw_user_db
   ahw_auth_redis:
@@ -64,10 +64,9 @@ services:
       - LOGGER_LEVEL=${LOGGER_LEVEL}
       - PORT=9000
     ports:
-      - 9000:9000
+      - ${AHW_AUTH_PORT}:9000
     depends_on:
       - ahw_auth_redis
-
 networks:
     default:
       name:  ${AHW_DOCKER_NETWORK}
